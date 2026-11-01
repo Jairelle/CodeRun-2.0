@@ -1,0 +1,62 @@
+target/
+
+### Secrets ###
+mail.properties
+db.properties
+game_client/trivia_questions.json
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+.kotlin
+
+### IntelliJ IDEA ###
+.idea/modules.xml
+.idea/jarRepositories.xml
+.idea/compiler.xml
+.idea/libraries/
+*.iws
+*.iml
+*.ipr
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+launcher.properties
+
+### Game bridge (per-machine progress files) ###
+game_client/bridge/
+
+
+### Packaging (bundled logins and build output) ###
+packaging/config/
+dist/
+target/smoke/
+
+### Local database connection details (IntelliJ) and test logs ###
+.idea/dataSources/
+.idea/dataSources.xml
+.idea/dataSources.local.xml
+.idea/data_source_mapping.xml
+.idea/sqldialects.xml
+*.log

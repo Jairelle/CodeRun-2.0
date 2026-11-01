@@ -1,0 +1,204 @@
+/* CodeRun launcher theme - matches the artwork: craft-stick wood, teal ink, island-slate panels.
+   wood   #f0d49b / #dcb877     teal   #2b8a8e / #1f6568     ink #3b2314     title yellow #f6d96b   */
+
+/* ---------- panels ---------- */
+.card, .board {
+    -fx-background-color: rgba(22, 38, 46, 0.86);
+    -fx-background-radius: 10;
+    -fx-border-color: #2b8a8e;
+    -fx-border-width: 2;
+    -fx-border-radius: 10;
+}
+
+.card-title {
+    -fx-text-fill: #f6d96b;
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+}
+.card-text {
+    -fx-text-fill: #f3e4c0;
+    -fx-font-size: 13px;
+}
+.card-check {
+    -fx-text-fill: #f3e4c0;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+}
+.card-check .box {
+    -fx-background-color: #f0d49b;
+    -fx-background-radius: 4;
+}
+.card-check:selected .mark {
+    -fx-background-color: #1f6568;
+}
+
+.remember-check {
+    -fx-text-fill: white;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(one-pass-box, rgba(0,0,0,0.85), 0, 0, 1, 1);
+}
+.remember-check .box {
+    -fx-background-color: #f0d49b;
+    -fx-background-radius: 3;
+    -fx-padding: 3;
+}
+.remember-check:selected .mark {
+    -fx-background-color: #1f6568;
+}
+
+.link-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #ffe9a8;
+    -fx-underline: true;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(one-pass-box, rgba(0,0,0,0.85), 0, 0, 1, 1);
+}
+.link-button:hover {
+    -fx-text-fill: white;
+}
+
+/* ---------- craft-stick buttons (same wood + teal ink + hard teal shadow as the launcher art) ---------- */
+.wood-button, .back-button, .green-button, .amber-button, .danger-button {
+    -fx-background-color: #f0d49b;
+    -fx-background-radius: 16;
+    -fx-text-fill: #1f6568;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-padding: 5 22 5 22;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(one-pass-box, #2b8a8e, 0, 0, 2, 3);
+}
+.wood-button:hover, .back-button:hover, .green-button:hover, .amber-button:hover, .danger-button:hover {
+    -fx-background-color: #f8e3b2;
+}
+.wood-button:pressed, .back-button:pressed, .green-button:pressed, .amber-button:pressed, .danger-button:pressed {
+    -fx-background-color: #dcb877;
+    -fx-translate-x: 1;
+    -fx-translate-y: 2;
+    -fx-effect: dropshadow(one-pass-box, #2b8a8e, 0, 0, 1, 1);
+}
+.back-button {
+    -fx-font-size: 12px;
+    -fx-padding: 4 16 4 14;
+}
+.danger-button {
+    -fx-text-fill: #a3382b;
+}
+
+/* ---------- inputs ---------- */
+.wood-field {
+    -fx-background-color: #f6e3b8;
+    -fx-background-radius: 16;
+    -fx-border-color: #dcb877;
+    -fx-border-radius: 16;
+    -fx-text-fill: #3b2314;
+    -fx-prompt-text-fill: #8a7350;
+    -fx-padding: 5 14 5 14;
+}
+.wood-field:focused {
+    -fx-border-color: #2b8a8e;
+}
+.card .combo-box, .board .combo-box {
+    -fx-background-color: #f6e3b8;
+    -fx-background-radius: 16;
+    -fx-border-color: #dcb877;
+    -fx-border-radius: 16;
+    -fx-cursor: hand;
+}
+.card .combo-box .list-cell, .board .combo-box .list-cell {
+    -fx-text-fill: #3b2314;
+    -fx-font-weight: bold;
+    -fx-background-color: transparent;
+}
+
+/* ---------- labels ---------- */
+.status-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, black, 4, 0.8, 0, 1);
+}
+.footer {
+    -fx-text-fill: rgba(255, 255, 255, 0.6);
+    -fx-font-size: 10px;
+    -fx-effect: dropshadow(gaussian, black, 3, 0.8, 0, 1);
+}
+.progress-indicator > .determinate-indicator-region,
+.progress-indicator .percent {
+    -fx-text-fill: transparent;
+}
+
+/* ---------- admin dashboard ---------- */
+.page-title {
+    -fx-text-fill: #f6d96b;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+.count-text {
+    -fx-text-fill: #f3e4c0;
+    -fx-font-size: 12px;
+}
+
+.admin-table {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: #f6e3b8;
+    -fx-control-inner-background-alt: #efd7a2;
+    -fx-table-cell-border-color: transparent;
+    -fx-border-color: #2b8a8e;
+    -fx-border-width: 2;
+}
+.admin-table .column-header-background {
+    -fx-background-color: #2b8a8e;
+}
+.admin-table .column-header, .admin-table .filler {
+    -fx-background-color: #2b8a8e;
+    -fx-border-color: transparent;
+    -fx-size: 30;
+}
+.admin-table .column-header .label {
+    -fx-text-fill: #fff4d6;
+    -fx-font-weight: bold;
+    -fx-alignment: center-left;
+}
+.admin-table .table-cell {
+    -fx-text-fill: #3b2314;
+    -fx-padding: 4 8 4 8;
+}
+.admin-table .table-row-cell:selected {
+    -fx-background-color: #9ccfc9;
+}
+.admin-table .table-row-cell:selected .table-cell {
+    -fx-text-fill: #14302f;
+}
+.admin-table .placeholder .label {
+    -fx-text-fill: #3b2314;
+}
+.admin-table .scroll-bar {
+    -fx-background-color: transparent;
+}
+
+/* ---------- dialogs ---------- */
+.themed-dialog {
+    -fx-background-color: #162630;
+    -fx-border-color: #2b8a8e;
+    -fx-border-width: 2;
+}
+.themed-dialog .label {
+    -fx-text-fill: #f3e4c0;
+    -fx-font-size: 13px;
+}
+.themed-dialog .button {
+    -fx-background-color: #f0d49b;
+    -fx-background-radius: 14;
+    -fx-text-fill: #1f6568;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+
+/* ---------- panes drawn straight on the artwork (login look) ---------- */
+.pane-title { -fx-text-fill: #ffe9a8; -fx-effect: dropshadow(one-pass-box, rgba(0,0,0,0.85), 0, 0, 1, 1); }
+.pane-label { -fx-text-fill: white; -fx-effect: dropshadow(one-pass-box, rgba(0,0,0,0.85), 0, 0, 1, 1); }
+.plank-combo { -fx-background-color: transparent; -fx-cursor: hand; }
+.plank-combo .list-cell { -fx-text-fill: #3b2314; -fx-font-weight: bold; -fx-alignment: center; -fx-background-color: transparent; }
+.plank-combo .arrow-button { -fx-background-color: transparent; }
+.plank-combo .arrow { -fx-background-color: #3b2314; }

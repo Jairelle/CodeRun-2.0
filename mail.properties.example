@@ -1,0 +1,11 @@
+# Copy this file to "mail.properties" (same folder as pom.xml) and fill it in.
+# mail.properties is git-ignored, so your real password never gets committed.
+#
+# mail.user     = the Gmail address that SENDS the verification codes
+# mail.password = a 16-character Gmail "App Password" (NOT your normal Gmail password)
+#   Create one at: Google Account > Security > 2-Step Verification > App passwords
+#
+# Alternative: set the env vars CODERUN_MAIL_USER and CODERUN_MAIL_PASSWORD instead.
+mail.user=your-sender-address@gmail.com
+mail.password=xxxx xxxx xxxx xxxx
+

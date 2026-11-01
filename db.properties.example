@@ -1,0 +1,12 @@
+# Copy this file to "db.properties" (same folder as pom.xml) and fill it in.
+# db.properties is git-ignored, so your real password never gets committed.
+#
+# Find these values in the Aiven Console > your MySQL service > Overview.
+#
+# Alternative: set the env vars CODERUN_DB_HOST, CODERUN_DB_PORT, CODERUN_DB_NAME,
+# CODERUN_DB_USER and CODERUN_DB_PASSWORD instead.
+db.host=YOUR-SERVICE.l.aivencloud.com
+db.port=12345
+db.name=defaultdb
+db.user=avnadmin
+db.password=PASTE_YOUR_AIVEN_PASSWORD_HERE

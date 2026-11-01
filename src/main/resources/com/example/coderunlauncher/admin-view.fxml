@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.control.cell.PropertyValueFactory?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.coderunlauncher.AdminController">
+   <children>
+
+      <ImageView fx:id="adminBg" preserveRatio="false">
+         <image><Image url="@images/bg_login.png" /></image>
+      </ImageView>
+      <Region style="-fx-background-color: rgba(10, 18, 28, 0.58);" />
+
+      <VBox spacing="12.0">
+         <padding><Insets bottom="18.0" left="22.0" right="22.0" top="16.0" /></padding>
+         <children>
+
+            <HBox alignment="CENTER_LEFT" spacing="14.0">
+               <children>
+                  <Button fx:id="logoutButton" mnemonicParsing="false" onAction="#handleLogout" styleClass="back-button" text="&#8592; Log out" />
+                  <Label styleClass="page-title" text="Players" />
+                  <Region HBox.hgrow="ALWAYS" />
+                  <Button fx:id="quitButton" mnemonicParsing="false" onAction="#handleQuit" styleClass="danger-button" text="Quit" />
+               </children>
+            </HBox>
+
+            <VBox spacing="8.0" styleClass="board" VBox.vgrow="ALWAYS">
+               <padding><Insets bottom="12.0" left="14.0" right="14.0" top="12.0" /></padding>
+               <children>
+                  <HBox alignment="CENTER_LEFT" spacing="10.0">
+                     <children>
+                        <TextField fx:id="searchField" prefWidth="260.0" promptText="Search name or email" styleClass="wood-field" />
+                        <Label fx:id="countLabel" styleClass="count-text" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Button mnemonicParsing="false" onAction="#openProgress" styleClass="wood-button" text="Player Progress" />
+                        <Button mnemonicParsing="false" onAction="#loadUsers" styleClass="wood-button" text="Refresh" />
+                     </children>
+                  </HBox>
+                  <TableView fx:id="usersTable" onMouseClicked="#handleRowSelect" styleClass="admin-table" VBox.vgrow="ALWAYS">
+                     <columns>
+                        <TableColumn fx:id="idColumn" maxWidth="60.0" minWidth="45.0" prefWidth="50.0" sortable="false" text="#">
+                           <cellValueFactory><PropertyValueFactory property="id" /></cellValueFactory>
+                        </TableColumn>
+                        <TableColumn prefWidth="170.0" text="Username">
+                           <cellValueFactory><PropertyValueFactory property="username" /></cellValueFactory>
+                        </TableColumn>
+                        <TableColumn prefWidth="280.0" text="Email">
+                           <cellValueFactory><PropertyValueFactory property="email" /></cellValueFactory>
+                        </TableColumn>
+                        <TableColumn fx:id="passwordColumn" prefWidth="120.0" sortable="false" text="Password">
+                           <cellValueFactory><PropertyValueFactory property="passwordHash" /></cellValueFactory>
+                        </TableColumn>
+                        <TableColumn fx:id="roleColumn" prefWidth="90.0" text="Role">
+                           <cellValueFactory><PropertyValueFactory property="role" /></cellValueFactory>
+                        </TableColumn>
+                     </columns>
+                     <columnResizePolicy><TableView fx:constant="CONSTRAINED_RESIZE_POLICY" /></columnResizePolicy>
+                  </TableView>
+               </children>
+            </VBox>
+
+            <VBox spacing="10.0" styleClass="board">
+               <padding><Insets bottom="12.0" left="14.0" right="14.0" top="12.0" /></padding>
+               <children>
+                  <HBox spacing="10.0">
+                     <children>
+                        <TextField fx:id="txtUsername" prefWidth="170.0" promptText="Username" styleClass="wood-field" />
+                        <TextField fx:id="txtEmail" prefWidth="230.0" promptText="Email" styleClass="wood-field" HBox.hgrow="ALWAYS" />
+                        <PasswordField fx:id="txtPassword" prefWidth="240.0" promptText="New password (blank = keep)" styleClass="wood-field" HBox.hgrow="ALWAYS" />
+                        <ComboBox fx:id="comboRole" prefWidth="120.0" promptText="Role" />
+                     </children>
+                  </HBox>
+                  <HBox alignment="CENTER_LEFT" spacing="10.0">
+                     <children>
+                        <Button mnemonicParsing="false" onAction="#handleAddUser" styleClass="wood-button" text="Add" />
+                        <Button mnemonicParsing="false" onAction="#handleUpdateUser" styleClass="wood-button" text="Update" />
+                        <Button mnemonicParsing="false" onAction="#handleDeleteUser" styleClass="danger-button" text="Delete" />
+                        <Label fx:id="statusLabel" styleClass="status-label">
+                           <HBox.margin><Insets left="8.0" /></HBox.margin>
+                        </Label>
+                     </children>
+                  </HBox>
+               </children>
+            </VBox>
+         </children>
+      </VBox>
+   </children>
+</StackPane>
