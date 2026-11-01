@@ -7,7 +7,7 @@ on boat and rod skins and upgrades at the **Main Island** harbor.
 
 ## ⬇️ Download
 
-**[Windows – CodeRun-2.0-Setup.exe](https://github.com/Jairelle/CodeRun-2.0/releases/latest/download/CodeRun-2.0-Setup.exe)**  ·  **[Linux – CodeRun-2.0-linux-x64.tar.gz](https://github.com/Jairelle/CodeRun-2.0/releases/latest/download/CodeRun-2.0-linux-x64.tar.gz)**
+**[Windows – CodeRun-2.0.1-Setup.exe](https://github.com/Jairelle/CodeRun-2.0/releases/download/v2.0.1/CodeRun-2.0.1-Setup.exe)**  ·  **[Linux – CodeRun-2.0-linux-x64.tar.gz](https://github.com/Jairelle/CodeRun-2.0/releases/download/v2.0.1/CodeRun-2.0-linux-x64.tar.gz)**
 
 All versions: [Releases page](https://github.com/Jairelle/CodeRun-2.0/releases)
 
@@ -20,7 +20,7 @@ All versions: [Releases page](https://github.com/Jairelle/CodeRun-2.0/releases)
 | | Windows | Linux |
 |---|---|---|
 | System | Windows 10 or 11, 64-bit | Any 64-bit Linux desktop (Ubuntu, Fedora, Arch, Mint…) |
-| Download | [CodeRun-2.0-Setup.exe](https://github.com/Jairelle/CodeRun-2.0/releases/latest/download/CodeRun-2.0-Setup.exe) | [CodeRun-2.0-linux-x64.tar.gz](https://github.com/Jairelle/CodeRun-2.0/releases/latest/download/CodeRun-2.0-linux-x64.tar.gz) |
+| Download | [CodeRun-2.0.1-Setup.exe](https://github.com/Jairelle/CodeRun-2.0/releases/download/v2.0.1/CodeRun-2.0.1-Setup.exe) | [CodeRun-2.0-linux-x64.tar.gz](https://github.com/Jairelle/CodeRun-2.0/releases/download/v2.0.1/CodeRun-2.0-linux-x64.tar.gz) |
 | Free space | about 600 MB | about 600 MB |
 | Internet | required (login, saving and multiplayer) | required |
 
@@ -29,7 +29,7 @@ All versions: [Releases page](https://github.com/Jairelle/CodeRun-2.0/releases)
 ## Windows
 
 ### Install
-1. Download **[CodeRun-2.0-Setup.exe](https://github.com/Jairelle/CodeRun-2.0/releases/latest/download/CodeRun-2.0-Setup.exe)**.
+1. Download **[CodeRun-2.0.1-Setup.exe](https://github.com/Jairelle/CodeRun-2.0/releases/download/v2.0.1/CodeRun-2.0.1-Setup.exe)**.
 2. If a blue box says **"Windows protected your PC"**, click **More info**, then **Run anyway**.
    This appears because the game is new and not signed by a big publisher. It is safe.
 3. Click **Next**. You can keep the suggested folder or pick another one.
@@ -46,7 +46,7 @@ All versions: [Releases page](https://github.com/Jairelle/CodeRun-2.0/releases)
 ## Linux
 
 ### Install
-1. Download **[CodeRun-2.0-linux-x64.tar.gz](https://github.com/Jairelle/CodeRun-2.0/releases/latest/download/CodeRun-2.0-linux-x64.tar.gz)**.
+1. Download **[CodeRun-2.0-linux-x64.tar.gz](https://github.com/Jairelle/CodeRun-2.0/releases/download/v2.0.1/CodeRun-2.0-linux-x64.tar.gz)**.
 2. Extract it in a terminal:
    ```
    tar -xzf CodeRun-2.0-linux-x64.tar.gz
@@ -71,7 +71,7 @@ All versions: [Releases page](https://github.com/Jairelle/CodeRun-2.0/releases)
 ## Updating
 
 When a new version comes out:
-- **Windows:** run the new `CodeRun-2.0-Setup.exe`. It replaces the old version automatically.
+- **Windows:** run the new `CodeRun-2.0.1-Setup.exe`. It replaces the old version automatically.
 - **Linux:** delete the old `CodeRun` folder and extract the new download.
 
 Your progress is kept either way.
