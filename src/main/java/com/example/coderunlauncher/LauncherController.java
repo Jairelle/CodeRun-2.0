@@ -1358,6 +1358,11 @@ public class LauncherController {
 
                 ProcessBuilder pb = new ProcessBuilder(command);
                 pb.directory(exe.getParent().toFile());
+                // Nobody reads the game's stdout/stderr; on Windows the pipe buffer fills up and the
+                // game freezes. Send everything to a log file instead.
+                pb.redirectErrorStream(true);
+                pb.redirectOutput(ProcessBuilder.Redirect.to(
+                        AppPaths.runtimeDir().resolve("game_output.log").toFile()));
                 Process game = pb.start();
                 GameBridge.watch(game, username, () -> Platform.runLater(() -> {
                     if (hiddenForGame) {
