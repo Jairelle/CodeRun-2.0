@@ -1,11 +1,26 @@
 CodeRun 2.0 for Linux (64-bit)
 ==============================
 
-Nothing else to install - Java and the game are included.
+Nothing else to install - Java and the game are already inside this folder.
 
-1. Start:   double-click  bin/CodeRun   (or run  ./bin/CodeRun  in a terminal)
-2. Optional: run  ./install-shortcut.sh  once to add CodeRun to your applications menu.
+PLAY
+  Open the "bin" folder and double-click "CodeRun".
+  If that does nothing, open a terminal in this folder and run:
+      ./bin/CodeRun
 
-Keep this whole folder together. To uninstall, delete the folder (and
-~/.local/share/applications/coderun.desktop if you added the shortcut).
-Your settings live in ~/.local/share/CodeRun; your coins, skins and stats are saved online.
+ADD TO YOUR APPS MENU (optional, once)
+  Run:  ./install-shortcut.sh
+  Then open "CodeRun 2.0" from your applications menu.
+
+FIRST TIME
+  Click Sign up, enter a username, email and password, type the emailed code,
+  then log in and press Play. Your progress is saved online.
+
+UPDATE
+  Delete this folder and extract the new download. Your progress is kept.
+
+UNINSTALL
+  Delete this folder (and ~/.local/share/applications/coderun.desktop
+  if you added the menu entry).
+
+Keep everything in this folder together.
