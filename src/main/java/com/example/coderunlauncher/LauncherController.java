@@ -172,6 +172,7 @@ public class LauncherController {
         setupSettingsAndPrefs();
         setupEnterKeys();
         playIntro();
+        UpdateChecker.install((StackPane) bgImageView.getParent());   // small "Update to vX" button, top-right
         // Start with status and back hidden
         if (statusLabel != null) statusLabel.setVisible(false);
         if (backButton != null) backButton.setVisible(false);
