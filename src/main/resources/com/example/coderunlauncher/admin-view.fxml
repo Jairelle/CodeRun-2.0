@@ -36,6 +36,7 @@
                         <TextField fx:id="searchField" prefWidth="260.0" promptText="Search name or email" styleClass="wood-field" />
                         <Label fx:id="countLabel" styleClass="count-text" />
                         <Region HBox.hgrow="ALWAYS" />
+                        <Button mnemonicParsing="false" onAction="#openQuestions" styleClass="wood-button" text="Island Questions" />
                         <Button mnemonicParsing="false" onAction="#openProgress" styleClass="wood-button" text="Player Progress" />
                         <Button mnemonicParsing="false" onAction="#loadUsers" styleClass="wood-button" text="Refresh" />
                      </children>

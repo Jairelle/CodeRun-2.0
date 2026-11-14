@@ -103,6 +103,12 @@ public class AdminController {
     }
 
     /** Opens the Player Progress editor (coins, orbs, skins, upgrades, stats). */
+    /** Opens the Island Questions editor (each island's own topic questions). */
+    @FXML
+    private void openQuestions() {
+        QuestionAdminWindow.open(usersTable.getScene().getWindow());
+    }
+
     @FXML
     private void openProgress() {
         ProgressAdminWindow.open(usersTable.getScene().getWindow());

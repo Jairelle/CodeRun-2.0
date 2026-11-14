@@ -26,6 +26,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
+import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.image.Image;
@@ -88,6 +89,14 @@ public class LauncherController {
     @FXML private CheckBox closeOnLaunchCheck;
     @FXML private ComboBox<String> resolutionCombo;
     @FXML private Label settingsStatusLabel;
+    // in-game settings, shared with the game through game_client/bridge/settings.json (see GameSettingsFile)
+    @FXML private Slider masterVolumeSlider;
+    @FXML private Slider musicVolumeSlider;
+    @FXML private Slider mouseSensitivitySlider;
+    @FXML private Label masterVolumeValue;
+    @FXML private Label musicVolumeValue;
+    @FXML private Label mouseSensitivityValue;
+    @FXML private CheckBox firstPersonCheck;
 
     // --- Main Menu Custom Image Buttons ---
     @FXML private Button loginButton;
@@ -328,6 +337,29 @@ public class LauncherController {
         if (rememberCheck != null) rememberCheck.setSelected(settings.rememberUsername);
         if (usernameField != null && settings.rememberUsername) usernameField.setText(settings.username);
         if (loginSpinner != null) loginSpinner.managedProperty().bind(loginSpinner.visibleProperty());
+        bindSliderLabel(masterVolumeSlider, masterVolumeValue, true);
+        bindSliderLabel(musicVolumeSlider, musicVolumeValue, true);
+        bindSliderLabel(mouseSensitivitySlider, mouseSensitivityValue, false);
+        loadGameSettings();
+    }
+
+    /** Shows a slider's value next to it: "80%" for volumes, "1.00x" for sensitivity. */
+    private static void bindSliderLabel(Slider slider, Label label, boolean percent) {
+        if (slider == null || label == null) return;
+        Runnable show = () -> label.setText(percent
+                ? Math.round(slider.getValue() * 100) + "%"
+                : String.format("%.2fx", slider.getValue()));
+        slider.valueProperty().addListener((obs, oldV, newV) -> show.run());
+        show.run();
+    }
+
+    /** Fills the in-game settings from settings.json (picks up changes made in the game's Esc menu). */
+    private void loadGameSettings() {
+        GameSettingsFile g = GameSettingsFile.load();
+        if (masterVolumeSlider != null) masterVolumeSlider.setValue(g.masterVolume);
+        if (musicVolumeSlider != null) musicVolumeSlider.setValue(g.musicVolume);
+        if (mouseSensitivitySlider != null) mouseSensitivitySlider.setValue(g.mouseSensitivity);
+        if (firstPersonCheck != null) firstPersonCheck.setSelected(g.firstPerson);
     }
 
     /** Enter in the username box jumps to the password; Enter in the password box logs in. */
@@ -816,6 +848,7 @@ public class LauncherController {
         if (fullscreenCheck != null) fullscreenCheck.setSelected(settings.fullscreen);
         if (closeOnLaunchCheck != null) closeOnLaunchCheck.setSelected(settings.closeOnLaunch);
         if (resolutionCombo != null) resolutionCombo.setValue(settings.resolution);
+        loadGameSettings();
         if (settingsStatusLabel != null) settingsStatusLabel.setText("");
         switchView(mainMenuPane, settingsPane, defaultBg);
     }
@@ -826,6 +859,12 @@ public class LauncherController {
         if (closeOnLaunchCheck != null) settings.closeOnLaunch = closeOnLaunchCheck.isSelected();
         if (resolutionCombo != null && resolutionCombo.getValue() != null) settings.resolution = resolutionCombo.getValue();
         settings.save();
+        GameSettingsFile g = GameSettingsFile.load();
+        if (masterVolumeSlider != null) g.masterVolume = masterVolumeSlider.getValue();
+        if (musicVolumeSlider != null) g.musicVolume = musicVolumeSlider.getValue();
+        if (mouseSensitivitySlider != null) g.mouseSensitivity = Math.round(mouseSensitivitySlider.getValue() * 20) / 20.0;
+        if (firstPersonCheck != null) g.firstPerson = firstPersonCheck.isSelected();
+        g.save();
         setStatus(settingsStatusLabel, "Saved! Applies the next time the game starts.", OK);
     }
 
@@ -1291,9 +1330,11 @@ public class LauncherController {
     private void startTriviaTopUp() {
         Thread topUp = new Thread(() -> {
             try {
-                TriviaService.topUp(100);
+                // The islands ask our own topic questions now (IslandQuestions), not Open Trivia DB ones:
+                // the first time, put the starter set in the table so there is something to play and edit.
+                IslandQuestions.seedStarterIfEmpty();
             } catch (Exception e) {
-                System.err.println("Trivia top-up skipped: " + e.getMessage());
+                System.err.println("Starter questions skipped: " + e.getMessage());
             }
         }, "trivia-topup");
         topUp.setDaemon(true);
@@ -1317,7 +1358,7 @@ public class LauncherController {
                 Path questionsFile = AppPaths.runtimeDir().resolve("trivia_questions.json");
                 boolean haveQuestions = false;
                 try {
-                    haveQuestions = TriviaService.exportRandom(50, questionsFile) > 0;
+                    haveQuestions = IslandQuestions.export(questionsFile) > 0;   // every island question, the same list for every player
                 } catch (Exception e) {
                     System.err.println("Could not export trivia questions: " + e.getMessage());
                 }

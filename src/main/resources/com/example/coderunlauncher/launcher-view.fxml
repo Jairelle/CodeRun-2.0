@@ -6,6 +6,7 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.Slider?>
 <?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.Image?>
@@ -392,7 +393,7 @@
       </VBox>
 
       <!-- ==================== SETTINGS PANE ==================== -->
-      <VBox fx:id="settingsPane" alignment="TOP_CENTER" maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="250.0" prefWidth="422.0" spacing="8.0" translateX="-20.0" translateY="60.0" visible="false" StackPane.alignment="CENTER_RIGHT">
+      <VBox fx:id="settingsPane" alignment="TOP_CENTER" maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="460.0" prefWidth="422.0" spacing="8.0" translateX="-20.0" translateY="60.0" visible="false" StackPane.alignment="CENTER_RIGHT">
          <children>
             <Label styleClass="pane-title" text="Game Settings"><font><Font name="JetBrainsMono NF Light Italic" size="15.0" /></font></Label>
             <CheckBox fx:id="fullscreenCheck" mnemonicParsing="false" styleClass="remember-check" text="Start the game in fullscreen"><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></CheckBox>
@@ -410,6 +411,29 @@
                </children>
             </HBox>
             <CheckBox fx:id="closeOnLaunchCheck" mnemonicParsing="false" styleClass="remember-check" text="Close the launcher when the game starts"><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></CheckBox>
+            <Label styleClass="pane-title" text="In-game (also in the game's Esc menu)"><font><Font name="JetBrainsMono NF Light Italic" size="14.0" /></font></Label>
+            <HBox alignment="CENTER" maxWidth="360.0" spacing="8.0">
+               <children>
+                  <Label minWidth="130.0" styleClass="pane-label" text="Master volume"><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></Label>
+                  <Slider fx:id="masterVolumeSlider" blockIncrement="0.05" max="1.0" min="0.0" prefWidth="160.0" styleClass="settings-slider" value="0.8" />
+                  <Label fx:id="masterVolumeValue" minWidth="50.0" styleClass="pane-label" text=""><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></Label>
+               </children>
+            </HBox>
+            <HBox alignment="CENTER" maxWidth="360.0" spacing="8.0">
+               <children>
+                  <Label minWidth="130.0" styleClass="pane-label" text="Music volume"><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></Label>
+                  <Slider fx:id="musicVolumeSlider" blockIncrement="0.05" max="1.0" min="0.0" prefWidth="160.0" styleClass="settings-slider" value="0.7" />
+                  <Label fx:id="musicVolumeValue" minWidth="50.0" styleClass="pane-label" text=""><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></Label>
+               </children>
+            </HBox>
+            <HBox alignment="CENTER" maxWidth="360.0" spacing="8.0">
+               <children>
+                  <Label minWidth="130.0" styleClass="pane-label" text="Mouse sensitivity"><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></Label>
+                  <Slider fx:id="mouseSensitivitySlider" blockIncrement="0.05" max="2.0" min="0.25" prefWidth="160.0" styleClass="settings-slider" value="1.0" />
+                  <Label fx:id="mouseSensitivityValue" minWidth="50.0" styleClass="pane-label" text=""><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></Label>
+               </children>
+            </HBox>
+            <CheckBox fx:id="firstPersonCheck" mnemonicParsing="false" styleClass="remember-check" text="Start islands in first-person view"><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></CheckBox>
             <Button fx:id="saveSettingsButton" mnemonicParsing="false" onAction="#handleSaveSettings" prefWidth="140.0" styleClass="wood-button" text="Save" />
             <Label fx:id="settingsStatusLabel" maxWidth="340.0" styleClass="status-label" textAlignment="CENTER" wrapText="true" />
          </children>
