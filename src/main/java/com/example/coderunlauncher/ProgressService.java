@@ -11,7 +11,8 @@ import java.util.*;
  *
  * Tables (created automatically when the launcher starts; existing tables are never changed):
  *   player_progress  one row per player: coins, orbs, stats, equipped skins, upgrade levels
- *   player_skins     the skins each player owns (one row per skin)
+ *   player_skins     the skins and Looks each player owns (one row per item); the Looks they wear are rows
+ *                    named "@slot=id" (e.g. "@hat=hat_straw"), so no new table or permission is needed
  *   match_results    one row per finished island, for history and checking
  *
  * The launcher is the only place that writes here: the game asks (through GameBridge) and this class
@@ -38,6 +39,56 @@ public final class ProgressService {
             new Skin("deep_sea", "Deep Sea", "rod", 45),
             new Skin("pearl_white", "Pearl White", "rod", 70),
             new Skin("starlight", "Starlight", "rod", 120));
+
+    /**
+     * The Merchant's Looks (same list as Looks.cs in the game). price 0 with minLevel above 1 = level-only.
+     * orbs = paid with orbs instead of coins.
+     */
+    public record Look(String id, String name, String slot, int price, boolean orbs, int minLevel) {
+        boolean free() { return price == 0; }
+    }
+
+    public static final List<Look> LOOKS = List.of(
+            new Look("shirt_orange", "Starter Orange", "shirt", 0, false, 1),
+            new Look("shirt_blue", "Ocean Blue", "shirt", 30, false, 1),
+            new Look("shirt_green", "Palm Green", "shirt", 30, false, 1),
+            new Look("shirt_pink", "Coral Pink", "shirt", 60, false, 1),
+            new Look("shirt_red", "Sunset Red", "shirt", 60, false, 1),
+            new Look("shirt_purple", "Royal Purple", "shirt", 80, false, 5),
+            new Look("shirt_teal", "Storm Teal", "shirt", 120, false, 8),
+            new Look("shirt_gold", "Golden Legend", "shirt", 40, true, 12),
+            new Look("hair_short", "Short", "hair", 0, false, 1),
+            new Look("hair_spiky", "Spiky", "hair", 40, false, 1),
+            new Look("hair_long", "Long", "hair", 60, false, 1),
+            new Look("hair_ponytail", "Ponytail", "hair", 60, false, 1),
+            new Look("hair_curly", "Curly", "hair", 90, false, 5),
+            new Look("hc_black", "Black", "haircolor", 0, false, 1),
+            new Look("hc_darkbrown", "Dark Brown", "haircolor", 15, false, 1),
+            new Look("hc_brown", "Brown", "haircolor", 20, false, 1),
+            new Look("hc_blonde", "Blonde", "haircolor", 50, false, 1),
+            new Look("hc_ginger", "Ginger", "haircolor", 50, false, 1),
+            new Look("hc_blue", "Ocean Dye", "haircolor", 20, true, 8),
+            new Look("hc_pink", "Bubblegum Dye", "haircolor", 20, true, 8),
+            new Look("hat_cap", "Captain's Cap", "hat", 0, false, 1),
+            new Look("hat_straw", "Straw Hat", "hat", 70, false, 1),
+            new Look("hat_bucket", "Bucket Hat", "hat", 90, false, 5),
+            new Look("hat_pirate", "Pirate Hat", "hat", 30, true, 10),
+            new Look("hat_crown", "Crown", "hat", 0, false, 15),
+            new Look("cel_cheer", "Cheer", "celebrate", 0, false, 1),
+            new Look("cel_dance", "Dance", "celebrate", 100, false, 5),
+            new Look("cel_spin", "Victory Spin", "celebrate", 30, true, 10),
+            new Look("frame_plain", "Plain", "frame", 0, false, 1),
+            new Look("frame_silver", "Silver Frame", "frame", 0, false, 5),
+            new Look("frame_gold", "Gold Frame", "frame", 0, false, 10),
+            new Look("frame_rainbow", "Rainbow Frame", "frame", 0, false, 20));
+
+    public static Look look(String id) {
+        for (Look l : LOOKS) if (l.id().equals(id)) return l;
+        return null;
+    }
+
+    /** Player level, the same formula as the game (PlayerProfile.PlayerLevel): one level per 40 points. */
+    public static int playerLevel(int totalScore) { return 1 + Math.max(0, totalScore) / 40; }
 
     public static final List<Upgrade> UPGRADES = List.of(
             new Upgrade("boat_speed", "Boat Speed", "boat_speed_lvl", 8),
@@ -178,15 +229,21 @@ public final class ProgressService {
                 }
             }
             JsonArray owned = new JsonArray();
+            JsonArray wearing = new JsonArray();
             owned.add(DEFAULT_BOAT);
             owned.add(DEFAULT_ROD);
             try (PreparedStatement ps = conn.prepareStatement("SELECT skin_id FROM player_skins WHERE username = ?")) {
                 ps.setString(1, username);
                 try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) owned.add(rs.getString(1));
+                    while (rs.next()) {
+                        String id = rs.getString(1);
+                        if (id.startsWith("@")) wearing.add(id.substring(1));   // "@hat=hat_straw" -> "hat=hat_straw"
+                        else owned.add(id);
+                    }
                 }
             }
             o.add("ownedSkins", owned);
+            o.add("equippedLooks", wearing);
 
             JsonArray board = new JsonArray();
             try (Statement st = conn.createStatement();
@@ -302,7 +359,68 @@ public final class ProgressService {
         }
     }
 
+    private static int totalScore(Connection conn, String user) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("SELECT total_score FROM player_progress WHERE username = ?")) {
+            ps.setString(1, user);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next() ? rs.getInt(1) : 0; }
+        }
+    }
+
+    private static boolean ownsLook(Connection conn, String user, Look l) throws SQLException {
+        if (playerLevel(totalScore(conn, user)) < l.minLevel()) return false;
+        if (l.free()) return true;
+        try (PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM player_skins WHERE username = ? AND skin_id = ?")) {
+            ps.setString(1, user);
+            ps.setString(2, l.id());
+            try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+        }
+    }
+
+    private static String buyLook(Connection conn, String user, Look l) throws SQLException {
+        if (ownsLook(conn, user, l)) return equipLook(conn, user, l);
+        int lvl = playerLevel(totalScore(conn, user));
+        if (lvl < l.minLevel()) return l.name() + " unlocks at level " + l.minLevel() + " (you are level " + lvl + ").";
+        int[] w = wallet(conn, user);
+        int have = l.orbs() ? w[1] : w[0];
+        String cur = l.orbs() ? "orbs" : "coins";
+        if (have < l.price()) return "Not enough " + cur + " - you need " + l.price() + ".";
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE player_progress SET " + (l.orbs() ? "orbs = orbs" : "coins = coins") + " - ? WHERE username = ?")) {
+            ps.setInt(1, l.price());
+            ps.setString(2, user);
+            ps.executeUpdate();
+        }
+        try (PreparedStatement ps = conn.prepareStatement("INSERT IGNORE INTO player_skins (username, skin_id) VALUES (?, ?)")) {
+            ps.setString(1, user);
+            ps.setString(2, l.id());
+            ps.executeUpdate();
+        }
+        wearLook(conn, user, l);
+        return "Bought " + l.name() + "!";
+    }
+
+    private static String equipLook(Connection conn, String user, Look l) throws SQLException {
+        if (!ownsLook(conn, user, l)) return "You don't have " + l.name() + " yet.";
+        wearLook(conn, user, l);
+        return "Wearing " + l.name() + ".";
+    }
+
+    private static void wearLook(Connection conn, String user, Look l) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM player_skins WHERE username = ? AND skin_id LIKE ?")) {
+            ps.setString(1, user);
+            ps.setString(2, "@" + l.slot() + "=%");
+            ps.executeUpdate();
+        }
+        try (PreparedStatement ps = conn.prepareStatement("INSERT IGNORE INTO player_skins (username, skin_id) VALUES (?, ?)")) {
+            ps.setString(1, user);
+            ps.setString(2, "@" + l.slot() + "=" + l.id());
+            ps.executeUpdate();
+        }
+    }
+
     private static String buy(Connection conn, String user, String id) throws SQLException {
+        Look l = look(id);
+        if (l != null) return buyLook(conn, user, l);
         Skin s = skin(id);
         if (s == null) return "That item is not for sale.";
         if (owns(conn, user, s)) return equip(conn, user, id);
@@ -323,6 +441,8 @@ public final class ProgressService {
     }
 
     private static String equip(Connection conn, String user, String id) throws SQLException {
+        Look l = look(id);
+        if (l != null) return equipLook(conn, user, l);
         Skin s = skin(id);
         if (s == null) return "Unknown skin.";
         if (!owns(conn, user, s)) return "You don't own " + s.name() + " yet.";
@@ -416,9 +536,14 @@ public final class ProgressService {
                     ps.setString(i, username);
                     ps.executeUpdate();
                 }
-                try (PreparedStatement del = conn.prepareStatement("DELETE FROM player_skins WHERE username = ?")) {
-                    del.setString(1, username);
-                    del.executeUpdate();
+                // only the boat and rod skins are edited here; bought Looks and what the player wears stay
+                try (PreparedStatement del = conn.prepareStatement("DELETE FROM player_skins WHERE username = ? AND skin_id = ?")) {
+                    for (Skin s : SKINS) {
+                        del.setString(1, username);
+                        del.setString(2, s.id());
+                        del.addBatch();
+                    }
+                    del.executeBatch();
                 }
                 try (PreparedStatement ins = conn.prepareStatement("INSERT INTO player_skins (username, skin_id) VALUES (?, ?)")) {
                     for (String id : owned) {

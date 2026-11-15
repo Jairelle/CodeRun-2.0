@@ -33,7 +33,7 @@ import java.util.List;
  * The topic names must match TriviaBank.cs in the Unity project.
  */
 public final class IslandQuestions {
-
+    // Topic names must match TriviaBank.cs in the Unity project
     public static final String[] TOPICS = { "Info Management", "Data Structures", "OOP" };
     public static final String[] ISLANDS = { "Island 1 - Trivia Arena", "Island 2 - Dream Lake", "Island 3 - Lighthouse Run" };
     public static final String[] TOPIC_LONG = { "Information Management (databases)", "Data Structures", "Object-Oriented Programming" };
