@@ -8,7 +8,9 @@ import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -28,6 +30,10 @@ public class AdminController {
     @FXML private TableColumn<User, String> passwordColumn;
     @FXML private TableColumn<User, String> roleColumn;
     @FXML private ImageView adminBg;
+    @FXML private VBox rootBox, playersBoard, formBoard;
+    @FXML private Label pageTitle;
+    @FXML private ToggleButton tabPlayers, tabQuestions, tabProgress;
+    private javafx.scene.Node currentPage;
 
     private static final String ERR = "#ff6b6b";
     private static final String OK = "#7dffb0";
@@ -39,6 +45,7 @@ public class AdminController {
     @FXML
     public void initialize() {
         comboRole.setItems(FXCollections.observableArrayList("PLAYER", "ADMIN"));
+        if (tabPlayers != null) { tabPlayers.setSelected(true); tabPlayers.setStyle("-fx-background-color: #2b8a8e; -fx-text-fill: white;"); }
 
         // background picture always fills the window
         if (adminBg != null && adminBg.getParent() instanceof StackPane root) {
@@ -102,16 +109,31 @@ public class AdminController {
         }
     }
 
-    /** Opens the Player Progress editor (coins, orbs, skins, upgrades, stats). */
-    /** Opens the Island Questions editor (each island's own topic questions). */
-    @FXML
-    private void openQuestions() {
-        QuestionAdminWindow.open(usersTable.getScene().getWindow());
-    }
+    // ---- pages: Players, Island Questions and Player Progress all show inside this dashboard
 
     @FXML
-    private void openProgress() {
-        ProgressAdminWindow.open(usersTable.getScene().getWindow());
+    private void showPlayers() { show(null, "Players", tabPlayers); loadUsers(); }
+
+    @FXML
+    private void openQuestions() { show(QuestionAdminWindow.page(), "Island Questions", tabQuestions); }
+
+    @FXML
+    private void openProgress() { show(ProgressAdminWindow.page(), "Player Progress", tabProgress); }
+
+    private void show(VBox page, String title, ToggleButton tab) {
+        if (currentPage != null) rootBox.getChildren().remove(currentPage);
+        currentPage = page;
+        boolean players = page == null;
+        for (VBox b : new VBox[] { playersBoard, formBoard }) { b.setVisible(players); b.setManaged(players); }
+        if (page != null) {
+            VBox.setVgrow(page, Priority.ALWAYS);
+            rootBox.getChildren().add(1, page);
+        }
+        pageTitle.setText(title);
+        for (ToggleButton t : new ToggleButton[] { tabPlayers, tabQuestions, tabProgress }) {
+            t.setSelected(t == tab);
+            t.setStyle(t == tab ? "-fx-background-color: #2b8a8e; -fx-text-fill: white;" : "");
+        }
     }
 
     @FXML

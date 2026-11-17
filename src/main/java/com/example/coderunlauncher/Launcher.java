@@ -43,6 +43,7 @@ public class Launcher extends Application {
 
         Scene scene = new Scene(holder, DESIGN_W, DESIGN_H);
         scene.getStylesheets().add(Launcher.class.getResource("launcher.css").toExternalForm());
+        LauncherAudio.install(scene);
         install(stage, scene, "CodeRun 2.0 Launcher", DESIGN_W, DESIGN_H);
     }
 

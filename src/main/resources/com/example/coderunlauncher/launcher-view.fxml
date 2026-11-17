@@ -393,25 +393,10 @@
       </VBox>
 
       <!-- ==================== SETTINGS PANE ==================== -->
-      <VBox fx:id="settingsPane" alignment="TOP_CENTER" maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="460.0" prefWidth="422.0" spacing="8.0" translateX="-20.0" translateY="60.0" visible="false" StackPane.alignment="CENTER_RIGHT">
+      <VBox fx:id="settingsPane" alignment="TOP_CENTER" maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="270.0" prefWidth="422.0" spacing="7.0" translateX="-20.0" translateY="70.0" visible="false" StackPane.alignment="CENTER_RIGHT">
          <children>
-            <Label styleClass="pane-title" text="Game Settings"><font><Font name="JetBrainsMono NF Light Italic" size="15.0" /></font></Label>
-            <CheckBox fx:id="fullscreenCheck" mnemonicParsing="false" styleClass="remember-check" text="Start the game in fullscreen"><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></CheckBox>
-            <HBox alignment="CENTER" maxWidth="320.0" spacing="10.0">
-               <children>
-                  <Label styleClass="pane-label" text="Resolution"><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></Label>
-                  <StackPane maxWidth="190.0" minWidth="190.0" prefWidth="190.0">
-                     <children>
-                        <ImageView fitHeight="34.0" fitWidth="190.0" pickOnBounds="true">
-                           <image><Image url="@images/input_box.png" /></image>
-                        </ImageView>
-                        <ComboBox fx:id="resolutionCombo" maxWidth="170.0" prefWidth="170.0" styleClass="plank-combo" />
-                     </children>
-                  </StackPane>
-               </children>
-            </HBox>
             <CheckBox fx:id="closeOnLaunchCheck" mnemonicParsing="false" styleClass="remember-check" text="Close the launcher when the game starts"><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></CheckBox>
-            <Label styleClass="pane-title" text="In-game (also in the game's Esc menu)"><font><Font name="JetBrainsMono NF Light Italic" size="14.0" /></font></Label>
+            <Label styleClass="pane-title" text="In-game (also in the Esc menu)"><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></Label>
             <HBox alignment="CENTER" maxWidth="360.0" spacing="8.0">
                <children>
                   <Label minWidth="130.0" styleClass="pane-label" text="Master volume"><font><Font name="JetBrainsMono NF Light Italic" size="13.0" /></font></Label>

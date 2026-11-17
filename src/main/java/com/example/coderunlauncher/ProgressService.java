@@ -9,11 +9,15 @@ import java.util.*;
 /**
  * Player progress in the Aiven database: wallet (coins, orbs), owned skins, upgrade levels and stats.
  *
- * Tables (created automatically when the launcher starts; existing tables are never changed):
- *   player_progress  one row per player: coins, orbs, stats, equipped skins, upgrade levels
- *   player_skins     the skins and Looks each player owns (one row per item); the Looks they wear are rows
- *                    named "@slot=id" (e.g. "@hat=hat_straw"), so no new table or permission is needed
- *   match_results    one row per finished island, for history and checking
+ * Tables (created automatically by the launcher when it logs in with the admin database account):
+ *   player_progress   one row per player: coins, orbs, level, stats, equipped boat and rod
+ *   player_upgrades   one row per player and upgrade: its level (0-5)
+ *   player_items      everything a player owns, one row per item: boats, rods, shirts, hats... (kind says which)
+ *   player_outfit     what a player wears, one row per slot (shirt, hair, hat...)
+ *   match_results     one row per finished island, for history and checking
+ *   question_answers  every question a player answered on an island, right or wrong (for the teacher)
+ * Older launchers kept items in player_skins and upgrade levels in player_progress columns; that data is copied
+ * into the new tables once, the first time this version runs (see migrate).
  *
  * The launcher is the only place that writes here: the game asks (through GameBridge) and this class
  * checks prices and limits before saving, so a player cannot just give themselves coins.
@@ -166,8 +170,109 @@ public final class ProgressService {
             createWithFallback(st, progress, fk);
             createWithFallback(st, skins, fk);
             createWithFallback(st, results, fk);
+
+            createWithFallback(st, "CREATE TABLE IF NOT EXISTS player_upgrades (" +
+                    "username VARCHAR(50) NOT NULL, " +
+                    "upgrade_id VARCHAR(40) NOT NULL, " +
+                    "level TINYINT NOT NULL DEFAULT 0, " +
+                    "PRIMARY KEY (username, upgrade_id)", fk);
+            createWithFallback(st, "CREATE TABLE IF NOT EXISTS player_items (" +
+                    "username VARCHAR(50) NOT NULL, " +
+                    "item_id VARCHAR(40) NOT NULL, " +
+                    "kind VARCHAR(20) NOT NULL, " +
+                    "acquired_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "PRIMARY KEY (username, item_id), INDEX idx_kind (kind)", fk);
+            createWithFallback(st, "CREATE TABLE IF NOT EXISTS player_outfit (" +
+                    "username VARCHAR(50) NOT NULL, " +
+                    "slot VARCHAR(20) NOT NULL, " +
+                    "item_id VARCHAR(40) NOT NULL, " +
+                    "PRIMARY KEY (username, slot)", fk);
+            createWithFallback(st, "CREATE TABLE IF NOT EXISTS question_answers (" +
+                    "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "username VARCHAR(50) NOT NULL, " +
+                    "island TINYINT NOT NULL, " +
+                    "question VARCHAR(500) NOT NULL, " +
+                    "answer_given VARCHAR(255) NOT NULL, " +
+                    "is_correct BOOLEAN NOT NULL, " +
+                    "answered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "INDEX idx_user (username), INDEX idx_island (island)", fk);
+            addColumnIfMissing(conn, st, "player_progress", "level", "INT NOT NULL DEFAULT 1 AFTER orbs");
+            migrate(conn);
         }
         tablesReady = true;
+    }
+
+    private static void addColumnIfMissing(Connection conn, Statement st, String table, String column, String def) {
+        try (ResultSet cols = conn.getMetaData().getColumns(conn.getCatalog(), null, table, column)) {
+            if (cols.next()) return;
+            st.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + def);
+        } catch (SQLException e) {
+            if (!DatabaseManager.noPermission(e)) System.err.println("Could not add " + table + "." + column + ": " + e.getMessage());
+        }
+    }
+
+    /** Copies data from the old layout into the new tables, once (only while a new table is still empty). */
+    private static void migrate(Connection conn) {
+        try (Statement st = conn.createStatement()) {
+            if (empty(st, "player_items") && exists(conn, "player_skins")) {
+                List<String[]> rows = new ArrayList<>();
+                try (ResultSet rs = st.executeQuery("SELECT username, skin_id FROM player_skins")) {
+                    while (rs.next()) rows.add(new String[]{rs.getString(1), rs.getString(2)});
+                }
+                try (PreparedStatement item = conn.prepareStatement("INSERT IGNORE INTO player_items (username, item_id, kind) VALUES (?, ?, ?)");
+                     PreparedStatement wear = conn.prepareStatement("INSERT IGNORE INTO player_outfit (username, slot, item_id) VALUES (?, ?, ?)")) {
+                    for (String[] r : rows) {
+                        String id = r[1];
+                        if (id.startsWith("@")) {                       // "@hat=hat_straw": something they wear
+                            int eq = id.indexOf('=');
+                            if (eq < 0) continue;
+                            wear.setString(1, r[0]); wear.setString(2, id.substring(1, eq)); wear.setString(3, id.substring(eq + 1));
+                            wear.addBatch();
+                        } else {
+                            String kind = kindOf(id);
+                            if (kind == null) continue;
+                            item.setString(1, r[0]); item.setString(2, id); item.setString(3, kind);
+                            item.addBatch();
+                        }
+                    }
+                    item.executeBatch();
+                    wear.executeBatch();
+                }
+                System.out.println("Moved " + rows.size() + " owned items into player_items / player_outfit");
+            }
+            if (empty(st, "player_upgrades")) {
+                try (ResultSet rs = st.executeQuery("SELECT username, boat_speed_lvl, boat_armor_lvl, rod_bite_lvl, rod_control_lvl FROM player_progress");
+                     PreparedStatement ps = conn.prepareStatement("INSERT IGNORE INTO player_upgrades (username, upgrade_id, level) VALUES (?, ?, ?)")) {
+                    while (rs.next())
+                        for (int i = 0; i < UPGRADES.size(); i++) {
+                            int lvl = rs.getInt(2 + i);
+                            if (lvl <= 0) continue;
+                            ps.setString(1, rs.getString(1)); ps.setString(2, UPGRADES.get(i).id()); ps.setInt(3, lvl);
+                            ps.addBatch();
+                        }
+                    ps.executeBatch();
+                }
+            }
+            st.executeUpdate("UPDATE player_progress SET level = 1 + GREATEST(0, total_score) DIV 40");
+        } catch (SQLException e) {
+            if (!DatabaseManager.noPermission(e)) System.err.println("Progress migration skipped: " + e.getMessage());
+        }
+    }
+
+    private static boolean empty(Statement st, String table) throws SQLException {
+        try (ResultSet rs = st.executeQuery("SELECT 1 FROM " + table + " LIMIT 1")) { return !rs.next(); }
+    }
+
+    private static boolean exists(Connection conn, String table) throws SQLException {
+        try (ResultSet rs = conn.getMetaData().getTables(conn.getCatalog(), null, table, null)) { return rs.next(); }
+    }
+
+    /** "boat" / "rod" for skins, the slot ("shirt", "hat"...) for Looks, null if unknown. */
+    public static String kindOf(String id) {
+        Skin s = skin(id);
+        if (s != null) return s.kind();
+        Look l = look(id);
+        return l != null ? l.slot() : null;
     }
 
     /** Tries the table with the link to users; if MySQL refuses the link, creates it without. */
@@ -217,30 +322,29 @@ public final class ProgressService {
                         o.addProperty("correct", rs.getInt("questions_correct"));
                         o.addProperty("boatSkin", rs.getString("boat_skin"));
                         o.addProperty("rodSkin", rs.getString("rod_skin"));
-                        JsonArray ups = new JsonArray();
-                        for (Upgrade u : UPGRADES) {
-                            JsonObject uo = new JsonObject();
-                            uo.addProperty("id", u.id());
-                            uo.addProperty("level", rs.getInt(u.column()));
-                            ups.add(uo);
-                        }
-                        o.add("upgrades", ups);
+
                     }
                 }
             }
+            JsonArray ups = new JsonArray();
+            for (Upgrade u : UPGRADES) {
+                JsonObject uo = new JsonObject();
+                uo.addProperty("id", u.id());
+                uo.addProperty("level", upgradeLevel(conn, username, u));
+                ups.add(uo);
+            }
+            o.add("upgrades", ups);
             JsonArray owned = new JsonArray();
             JsonArray wearing = new JsonArray();
             owned.add(DEFAULT_BOAT);
             owned.add(DEFAULT_ROD);
-            try (PreparedStatement ps = conn.prepareStatement("SELECT skin_id FROM player_skins WHERE username = ?")) {
+            try (PreparedStatement ps = conn.prepareStatement("SELECT item_id FROM player_items WHERE username = ?")) {
                 ps.setString(1, username);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        String id = rs.getString(1);
-                        if (id.startsWith("@")) wearing.add(id.substring(1));   // "@hat=hat_straw" -> "hat=hat_straw"
-                        else owned.add(id);
-                    }
-                }
+                try (ResultSet rs = ps.executeQuery()) { while (rs.next()) owned.add(rs.getString(1)); }
+            }
+            try (PreparedStatement ps = conn.prepareStatement("SELECT slot, item_id FROM player_outfit WHERE username = ?")) {
+                ps.setString(1, username);
+                try (ResultSet rs = ps.executeQuery()) { while (rs.next()) wearing.add(rs.getString(1) + "=" + rs.getString(2)); }
             }
             o.add("ownedSkins", owned);
             o.add("equippedLooks", wearing);
@@ -335,6 +439,30 @@ public final class ProgressService {
             ps.setInt(9, correct);
             ps.executeUpdate();
         }
+        try (PreparedStatement ps = conn.prepareStatement("UPDATE player_progress SET level = 1 + GREATEST(0, total_score) DIV 40 WHERE username = ?")) {
+            ps.setString(1, user);
+            ps.executeUpdate();
+        }
+        // every question they answered, right or wrong (sent by the game; at most what the island asks)
+        if (e.has("answers") && e.get("answers").isJsonArray()) {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO question_answers (username, island, question, answer_given, is_correct) VALUES (?, ?, ?, ?, ?)")) {
+                int n = 0;
+                for (var el : e.getAsJsonArray("answers")) {
+                    if (!el.isJsonObject() || n++ >= MAX_QUESTIONS_PER_ISLAND) break;
+                    JsonObject a = el.getAsJsonObject();
+                    String q = str(a, "question"), given = str(a, "given");
+                    if (q.isBlank()) continue;
+                    ps.setString(1, user);
+                    ps.setInt(2, island);
+                    ps.setString(3, q.length() > 500 ? q.substring(0, 500) : q);
+                    ps.setString(4, given.length() > 255 ? given.substring(0, 255) : given);
+                    ps.setBoolean(5, a.has("right") && a.get("right").getAsBoolean());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+        }
         StringBuilder sb = new StringBuilder("Saved: +" + score + " pts");
         if (coins > 0) sb.append(", +").append(coins).append(" coins");
         if (orbs > 0) sb.append(", +").append(orbs).append(" orbs");
@@ -352,11 +480,7 @@ public final class ProgressService {
 
     private static boolean owns(Connection conn, String user, Skin s) throws SQLException {
         if (s.price() == 0) return true;
-        try (PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM player_skins WHERE username = ? AND skin_id = ?")) {
-            ps.setString(1, user);
-            ps.setString(2, s.id());
-            try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
-        }
+        return hasItem(conn, user, s.id());
     }
 
     private static int totalScore(Connection conn, String user) throws SQLException {
@@ -369,11 +493,7 @@ public final class ProgressService {
     private static boolean ownsLook(Connection conn, String user, Look l) throws SQLException {
         if (playerLevel(totalScore(conn, user)) < l.minLevel()) return false;
         if (l.free()) return true;
-        try (PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM player_skins WHERE username = ? AND skin_id = ?")) {
-            ps.setString(1, user);
-            ps.setString(2, l.id());
-            try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
-        }
+        return hasItem(conn, user, l.id());
     }
 
     private static String buyLook(Connection conn, String user, Look l) throws SQLException {
@@ -390,11 +510,7 @@ public final class ProgressService {
             ps.setString(2, user);
             ps.executeUpdate();
         }
-        try (PreparedStatement ps = conn.prepareStatement("INSERT IGNORE INTO player_skins (username, skin_id) VALUES (?, ?)")) {
-            ps.setString(1, user);
-            ps.setString(2, l.id());
-            ps.executeUpdate();
-        }
+        giveItem(conn, user, l.id(), l.slot());
         wearLook(conn, user, l);
         return "Bought " + l.name() + "!";
     }
@@ -406,15 +522,37 @@ public final class ProgressService {
     }
 
     private static void wearLook(Connection conn, String user, Look l) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM player_skins WHERE username = ? AND skin_id LIKE ?")) {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO player_outfit (username, slot, item_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE item_id = VALUES(item_id)")) {
             ps.setString(1, user);
-            ps.setString(2, "@" + l.slot() + "=%");
+            ps.setString(2, l.slot());
+            ps.setString(3, l.id());
             ps.executeUpdate();
         }
-        try (PreparedStatement ps = conn.prepareStatement("INSERT IGNORE INTO player_skins (username, skin_id) VALUES (?, ?)")) {
+    }
+
+    private static boolean hasItem(Connection conn, String user, String id) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM player_items WHERE username = ? AND item_id = ?")) {
             ps.setString(1, user);
-            ps.setString(2, "@" + l.slot() + "=" + l.id());
+            ps.setString(2, id);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+        }
+    }
+
+    private static void giveItem(Connection conn, String user, String id, String kind) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("INSERT IGNORE INTO player_items (username, item_id, kind) VALUES (?, ?, ?)")) {
+            ps.setString(1, user);
+            ps.setString(2, id);
+            ps.setString(3, kind);
             ps.executeUpdate();
+        }
+    }
+
+    private static int upgradeLevel(Connection conn, String user, Upgrade u) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("SELECT level FROM player_upgrades WHERE username = ? AND upgrade_id = ?")) {
+            ps.setString(1, user);
+            ps.setString(2, u.id());
+            try (ResultSet rs = ps.executeQuery()) { return rs.next() ? rs.getInt(1) : 0; }
         }
     }
 
@@ -431,11 +569,7 @@ public final class ProgressService {
             ps.setString(2, user);
             ps.executeUpdate();
         }
-        try (PreparedStatement ps = conn.prepareStatement("INSERT IGNORE INTO player_skins (username, skin_id) VALUES (?, ?)")) {
-            ps.setString(1, user);
-            ps.setString(2, s.id());
-            ps.executeUpdate();
-        }
+        giveItem(conn, user, s.id(), s.kind());
         setEquipped(conn, user, s);
         return "Bought " + s.name() + "!";
     }
@@ -462,19 +596,20 @@ public final class ProgressService {
     private static String doUpgrade(Connection conn, String user, String id) throws SQLException {
         Upgrade u = upgrade(id);
         if (u == null) return "Unknown upgrade.";
-        int level;
-        try (PreparedStatement ps = conn.prepareStatement("SELECT " + u.column() + " FROM player_progress WHERE username = ? FOR UPDATE")) {
-            ps.setString(1, user);
-            try (ResultSet rs = ps.executeQuery()) { level = rs.next() ? rs.getInt(1) : 0; }
-        }
+        int level = upgradeLevel(conn, user, u);
         if (level >= MAX_LEVEL) return u.name() + " is already at max level.";
         int cost = upgradeCost(u, level);
         int orbs = wallet(conn, user)[1];
         if (orbs < cost) return "Not enough orbs - you need " + cost + ".";
-        try (PreparedStatement ps = conn.prepareStatement(
-                "UPDATE player_progress SET orbs = orbs - ?, " + u.column() + " = " + u.column() + " + 1 WHERE username = ?")) {
+        try (PreparedStatement ps = conn.prepareStatement("UPDATE player_progress SET orbs = orbs - ? WHERE username = ?")) {
             ps.setInt(1, cost);
             ps.setString(2, user);
+            ps.executeUpdate();
+        }
+        try (PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO player_upgrades (username, upgrade_id, level) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE level = level + 1")) {
+            ps.setString(1, user);
+            ps.setString(2, u.id());
             ps.executeUpdate();
         }
         return u.name() + " upgraded to level " + (level + 1) + "!";
@@ -482,99 +617,15 @@ public final class ProgressService {
 
     // ------------------------------------------------------------------ admin
 
-    /** One player's progress for the admin screen (missing players come back as all zeros). */
-    public static Map<String, Object> adminLoad(String username) throws SQLException {
-        ensureTables();
-        Map<String, Object> m = new LinkedHashMap<>();
-        try (Connection conn = DatabaseManager.getConnection()) {
-            ensureRow(conn, username);
-            try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM player_progress WHERE username = ?")) {
-                ps.setString(1, username);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        for (String c : ADMIN_INT_COLUMNS) m.put(c, rs.getInt(c));
-                        m.put("boat_skin", rs.getString("boat_skin"));
-                        m.put("rod_skin", rs.getString("rod_skin"));
-                    }
-                }
-            }
-            Set<String> owned = new TreeSet<>();
-            try (PreparedStatement ps = conn.prepareStatement("SELECT skin_id FROM player_skins WHERE username = ?")) {
-                ps.setString(1, username);
-                try (ResultSet rs = ps.executeQuery()) { while (rs.next()) owned.add(rs.getString(1)); }
-            }
-            m.put("owned", owned);
-        }
-        return m;
-    }
-
-    /** Number columns the admin can edit, in display order. */
-    public static final List<String> ADMIN_INT_COLUMNS = List.of(
-            "coins", "orbs", "matches_played", "wins", "total_score", "questions_answered", "questions_correct",
-            "boat_speed_lvl", "boat_armor_lvl", "rod_bite_lvl", "rod_control_lvl");
-
-    /** Saves the admin's edits for one player (numbers, equipped skins and the owned-skin list). */
-    public static void adminSave(String username, Map<String, Integer> numbers, String boatSkin, String rodSkin,
-                                 Set<String> owned) throws SQLException {
-        ensureTables();
-        try (Connection conn = DatabaseManager.getConnection()) {
-            ensureRow(conn, username);
-            conn.setAutoCommit(false);
-            try {
-                StringBuilder sql = new StringBuilder("UPDATE player_progress SET ");
-                for (String c : ADMIN_INT_COLUMNS) sql.append(c).append(" = ?, ");
-                sql.append("boat_skin = ?, rod_skin = ? WHERE username = ?");
-                try (PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-                    int i = 1;
-                    for (String c : ADMIN_INT_COLUMNS) {
-                        int v = Math.max(0, numbers.getOrDefault(c, 0));
-                        if (c.endsWith("_lvl")) v = Math.min(MAX_LEVEL, v);
-                        ps.setInt(i++, v);
-                    }
-                    ps.setString(i++, boatSkin);
-                    ps.setString(i++, rodSkin);
-                    ps.setString(i, username);
-                    ps.executeUpdate();
-                }
-                // only the boat and rod skins are edited here; bought Looks and what the player wears stay
-                try (PreparedStatement del = conn.prepareStatement("DELETE FROM player_skins WHERE username = ? AND skin_id = ?")) {
-                    for (Skin s : SKINS) {
-                        del.setString(1, username);
-                        del.setString(2, s.id());
-                        del.addBatch();
-                    }
-                    del.executeBatch();
-                }
-                try (PreparedStatement ins = conn.prepareStatement("INSERT INTO player_skins (username, skin_id) VALUES (?, ?)")) {
-                    for (String id : owned) {
-                        Skin s = skin(id);
-                        if (s == null || s.price() == 0) continue;
-                        ins.setString(1, username);
-                        ins.setString(2, id);
-                        ins.addBatch();
-                    }
-                    ins.executeBatch();
-                }
-                conn.commit();
-            } catch (SQLException e) {
-                conn.rollback();
-                throw e;
-            } finally {
-                conn.setAutoCommit(true);
-            }
-        }
-    }
-
     /** Puts one player back to a fresh start (keeps the account itself). */
     public static void adminReset(String username) throws SQLException {
         ensureTables();
         try (Connection conn = DatabaseManager.getConnection()) {
-            try (PreparedStatement a = conn.prepareStatement("DELETE FROM player_skins WHERE username = ?");
-                 PreparedStatement b = conn.prepareStatement("DELETE FROM player_progress WHERE username = ?")) {
-                a.setString(1, username);
-                a.executeUpdate();
-                b.setString(1, username);
-                b.executeUpdate();
+            for (String t : List.of("player_items", "player_outfit", "player_upgrades", "player_progress")) {
+                try (PreparedStatement ps = conn.prepareStatement("DELETE FROM " + t + " WHERE username = ?")) {
+                    ps.setString(1, username);
+                    ps.executeUpdate();
+                }
             }
         }
     }

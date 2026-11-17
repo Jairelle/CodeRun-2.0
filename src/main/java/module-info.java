@@ -1,6 +1,7 @@
 module com.example.coderunlauncher {
     requires javafx.controls;
     requires javafx.fxml;
+    requires javafx.media;   // launcher music and click sounds
     requires java.sql; // Enables JDBC functionality
     requires mysql.connector.j;
     requires bcrypt;

@@ -15,20 +15,24 @@
       </ImageView>
       <Region style="-fx-background-color: rgba(10, 18, 28, 0.58);" />
 
-      <VBox spacing="12.0">
+      <VBox fx:id="rootBox" spacing="12.0">
          <padding><Insets bottom="18.0" left="22.0" right="22.0" top="16.0" /></padding>
          <children>
 
             <HBox alignment="CENTER_LEFT" spacing="14.0">
                <children>
                   <Button fx:id="logoutButton" mnemonicParsing="false" onAction="#handleLogout" styleClass="back-button" text="&#8592; Log out" />
-                  <Label styleClass="page-title" text="Players" />
+                  <Label fx:id="pageTitle" styleClass="page-title" text="Players" />
                   <Region HBox.hgrow="ALWAYS" />
+                  <ToggleButton fx:id="tabPlayers" mnemonicParsing="false" onAction="#showPlayers" styleClass="wood-button" text="Players" />
+                  <ToggleButton fx:id="tabQuestions" mnemonicParsing="false" onAction="#openQuestions" styleClass="wood-button" text="Island Questions" />
+                  <ToggleButton fx:id="tabProgress" mnemonicParsing="false" onAction="#openProgress" styleClass="wood-button" text="Player Progress" />
+                  <Region prefWidth="20.0" />
                   <Button fx:id="quitButton" mnemonicParsing="false" onAction="#handleQuit" styleClass="danger-button" text="Quit" />
                </children>
             </HBox>
 
-            <VBox spacing="8.0" styleClass="board" VBox.vgrow="ALWAYS">
+            <VBox fx:id="playersBoard" spacing="8.0" styleClass="board" VBox.vgrow="ALWAYS">
                <padding><Insets bottom="12.0" left="14.0" right="14.0" top="12.0" /></padding>
                <children>
                   <HBox alignment="CENTER_LEFT" spacing="10.0">
@@ -36,8 +40,6 @@
                         <TextField fx:id="searchField" prefWidth="260.0" promptText="Search name or email" styleClass="wood-field" />
                         <Label fx:id="countLabel" styleClass="count-text" />
                         <Region HBox.hgrow="ALWAYS" />
-                        <Button mnemonicParsing="false" onAction="#openQuestions" styleClass="wood-button" text="Island Questions" />
-                        <Button mnemonicParsing="false" onAction="#openProgress" styleClass="wood-button" text="Player Progress" />
                         <Button mnemonicParsing="false" onAction="#loadUsers" styleClass="wood-button" text="Refresh" />
                      </children>
                   </HBox>
@@ -64,7 +66,7 @@
                </children>
             </VBox>
 
-            <VBox spacing="10.0" styleClass="board">
+            <VBox fx:id="formBoard" spacing="10.0" styleClass="board">
                <padding><Insets bottom="12.0" left="14.0" right="14.0" top="12.0" /></padding>
                <children>
                   <HBox spacing="10.0">

@@ -340,6 +340,12 @@ public class LauncherController {
         if (loginSpinner != null) loginSpinner.managedProperty().bind(loginSpinner.visibleProperty());
         bindSliderLabel(masterVolumeSlider, masterVolumeValue, true);
         bindSliderLabel(musicVolumeSlider, musicVolumeValue, true);
+        // the launcher music follows the sliders as you drag them
+        if (masterVolumeSlider != null && musicVolumeSlider != null) {
+            javafx.beans.InvalidationListener vol = o -> LauncherAudio.setVolumes(masterVolumeSlider.getValue(), musicVolumeSlider.getValue());
+            masterVolumeSlider.valueProperty().addListener(vol);
+            musicVolumeSlider.valueProperty().addListener(vol);
+        }
         bindSliderLabel(mouseSensitivitySlider, mouseSensitivityValue, false);
         loadGameSettings();
     }
@@ -1388,15 +1394,9 @@ public class LauncherController {
                     command.add("-questions");
                     command.add(questionsFile.toAbsolutePath().toString());
                 }
+                // always fullscreen, at the screen's own resolution
                 command.add("-screen-fullscreen");
-                command.add(settings.fullscreen ? "1" : "0");
-                int[] size = parseResolution(settings.resolution);
-                if (size != null) {
-                    command.add("-screen-width");
-                    command.add(String.valueOf(size[0]));
-                    command.add("-screen-height");
-                    command.add(String.valueOf(size[1]));
-                }
+                command.add("1");
 
                 ProcessBuilder pb = new ProcessBuilder(command);
                 pb.directory(exe.getParent().toFile());
@@ -1406,7 +1406,9 @@ public class LauncherController {
                 pb.redirectOutput(ProcessBuilder.Redirect.to(
                         AppPaths.runtimeDir().resolve("game_output.log").toFile()));
                 Process game = pb.start();
+                Platform.runLater(LauncherAudio::pauseForGame);
                 GameBridge.watch(game, username, () -> Platform.runLater(() -> {
+                    LauncherAudio.resumeAfterGame();
                     if (hiddenForGame) {
                         Platform.exit();
                         System.exit(0);

@@ -26,9 +26,10 @@ import java.util.List;
  *   Island 2 - Dream Lake      : Data Structures
  *   Island 3 - Lighthouse Run  : Object-Oriented Programming
  *
- * They live in the existing trivia_questions table: category = the topic, source = 'custom'.
- * (No new columns, so the limited player login - SELECT/INSERT/UPDATE/DELETE only - is enough.)
- * Open Trivia DB rows (source = 'opentdb') stay in the table but are no longer sent to the game.
+ * Each island has its own table: island1_questions, island2_questions, island3_questions
+ * (id, question, option_a..option_d, correct_index 0-3, question_hash, created_at).
+ * The first time this version runs, the island questions from the old shared trivia_questions table
+ * (source = 'custom') are copied into the island tables; trivia_questions itself is left as it was.
  *
  * The topic names must match TriviaBank.cs in the Unity project.
  */
@@ -42,6 +43,55 @@ public final class IslandQuestions {
 
     private static final String SOURCE = "custom";
 
+    /** The table that holds an island's questions (index 0-2). */
+    public static String table(int island) { return "island" + (island + 1) + "_questions"; }
+
+    private static String tableFor(String topic) {
+        int i = indexOf(topic);
+        if (i < 0) throw new IllegalArgumentException("Unknown island topic: " + topic);
+        return table(i);
+    }
+
+    private static volatile boolean ready;
+
+    /** Creates the three island tables and copies the old island questions in, once. */
+    public static synchronized void ensureTables() throws SQLException {
+        if (ready) return;
+        TriviaService.ensureTable();
+        try (Connection conn = DatabaseManager.getConnection(); Statement st = conn.createStatement()) {
+            for (int i = 0; i < TOPICS.length; i++) {
+                try {
+                    st.execute("CREATE TABLE IF NOT EXISTS " + table(i) + " (" +
+                            "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                            "question VARCHAR(500) NOT NULL, " +
+                            "option_a VARCHAR(255) NOT NULL, " +
+                            "option_b VARCHAR(255) NOT NULL, " +
+                            "option_c VARCHAR(255) NOT NULL, " +
+                            "option_d VARCHAR(255) NOT NULL, " +
+                            "correct_index TINYINT NOT NULL, " +
+                            "question_hash CHAR(64) NOT NULL UNIQUE, " +
+                            "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+                } catch (SQLException e) {
+                    if (!DatabaseManager.noPermission(e)) throw e;   // limited login: the tables already exist
+                }
+                try (ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM " + table(i))) {
+                    if (rs.next() && rs.getInt(1) > 0) continue;
+                }
+                try (PreparedStatement ps = conn.prepareStatement("INSERT IGNORE INTO " + table(i) +
+                        " (question, option_a, option_b, option_c, option_d, correct_index, question_hash) " +
+                        "SELECT question, option_a, option_b, option_c, option_d, correct_index, question_hash " +
+                        "FROM trivia_questions WHERE source = ? AND category = ? ORDER BY id")) {
+                    ps.setString(1, SOURCE);
+                    ps.setString(2, TOPICS[i]);
+                    ps.executeUpdate();
+                } catch (SQLException e) {
+                    if (!DatabaseManager.noPermission(e)) System.err.println("Could not copy old " + TOPICS[i] + " questions: " + e.getMessage());
+                }
+            }
+        }
+        ready = true;
+    }
+
     public record Question(int id, String topic, String question, String[] options, int correct) {
         @Override public String toString() { return question; }
     }
@@ -53,21 +103,18 @@ public final class IslandQuestions {
     /** All questions of one topic, oldest first. */
     public static List<Question> list(String topic) throws SQLException {
         List<Question> out = new ArrayList<>();
-        String sql = "SELECT id, category, question, option_a, option_b, option_c, option_d, correct_index " +
-                "FROM trivia_questions WHERE source = ? AND category = ? ORDER BY id";
+        ensureTables();
+        String sql = "SELECT id, question, option_a, option_b, option_c, option_d, correct_index FROM " + tableFor(topic) + " ORDER BY id";
         try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, SOURCE);
-            ps.setString(2, topic);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) out.add(read(rs));
-            }
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) out.add(read(rs, topic));
         }
         return out;
     }
 
-    private static Question read(ResultSet rs) throws SQLException {
-        return new Question(rs.getInt("id"), rs.getString("category"), rs.getString("question"),
+    private static Question read(ResultSet rs, String topic) throws SQLException {
+        return new Question(rs.getInt("id"), topic, rs.getString("question"),
                 new String[] { rs.getString("option_a"), rs.getString("option_b"), rs.getString("option_c"), rs.getString("option_d") },
                 rs.getInt("correct_index"));
     }
@@ -93,36 +140,35 @@ public final class IslandQuestions {
 
     /** Adds a new question. Throws SQLException (duplicate entry) if the same question already exists for the topic. */
     public static void add(Question q) throws SQLException {
-        String sql = "INSERT INTO trivia_questions " +
-                "(question, option_a, option_b, option_c, option_d, correct_index, category, difficulty, source, question_hash) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, 'easy', ?, ?)";
+        ensureTables();
+        String sql = "INSERT INTO " + tableFor(q.topic()) +
+                " (question, option_a, option_b, option_c, option_d, correct_index, question_hash) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             fill(ps, q);
-            ps.setString(8, SOURCE);
-            ps.setString(9, hash(q));
+            ps.setString(7, hash(q));
             ps.executeUpdate();
         }
     }
 
     public static void update(Question q) throws SQLException {
-        String sql = "UPDATE trivia_questions SET question = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, " +
-                "correct_index = ?, category = ?, question_hash = ? WHERE id = ? AND source = ?";
+        ensureTables();
+        String sql = "UPDATE " + tableFor(q.topic()) + " SET question = ?, option_a = ?, option_b = ?, option_c = ?, option_d = ?, " +
+                "correct_index = ?, question_hash = ? WHERE id = ?";
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             fill(ps, q);
-            ps.setString(8, hash(q));
-            ps.setInt(9, q.id());
-            ps.setString(10, SOURCE);
+            ps.setString(7, hash(q));
+            ps.setInt(8, q.id());
             ps.executeUpdate();
         }
     }
 
-    public static void delete(int id) throws SQLException {
+    public static void delete(String topic, int id) throws SQLException {
+        ensureTables();
         try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement("DELETE FROM trivia_questions WHERE id = ? AND source = ?")) {
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM " + tableFor(topic) + " WHERE id = ?")) {
             ps.setInt(1, id);
-            ps.setString(2, SOURCE);
             ps.executeUpdate();
         }
     }
@@ -131,7 +177,6 @@ public final class IslandQuestions {
         ps.setString(1, q.question().trim());
         for (int i = 0; i < 4; i++) ps.setString(2 + i, q.options()[i].trim());
         ps.setInt(6, q.correct());
-        ps.setString(7, q.topic());
     }
 
     /** True if this SQL error means "that question is already in the table". */
@@ -148,30 +193,27 @@ public final class IslandQuestions {
      * @return how many questions were added
      */
     public static int seedStarterIfEmpty() throws SQLException {
-        TriviaService.ensureTable();
-        try (Connection conn = DatabaseManager.getConnection()) {
-            try (PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM trivia_questions WHERE source = ?")) {
-                ps.setString(1, SOURCE);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next() && rs.getInt(1) > 0) return 0;
+        ensureTables();
+        int added = 0;
+        try (Connection conn = DatabaseManager.getConnection(); Statement st = conn.createStatement()) {
+            for (int t = 0; t < TOPICS.length; t++) {
+                try (ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM " + table(t))) {
+                    if (rs.next() && rs.getInt(1) > 0) continue;
+                }
+                String sql = "INSERT IGNORE INTO " + table(t) +
+                        " (question, option_a, option_b, option_c, option_d, correct_index, question_hash) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    for (String[] s : STARTER) {
+                        if (Integer.parseInt(s[0]) != t) continue;
+                        Question q = new Question(0, TOPICS[t], s[1], new String[] { s[2], s[3], s[4], s[5] }, Integer.parseInt(s[6]));
+                        fill(ps, q);
+                        ps.setString(7, hash(q));
+                        added += ps.executeUpdate();
+                    }
                 }
             }
-            String sql = "INSERT IGNORE INTO trivia_questions " +
-                    "(question, option_a, option_b, option_c, option_d, correct_index, category, difficulty, source, question_hash) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, 'easy', ?, ?)";
-            int added = 0;
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                for (String[] s : STARTER) {
-                    Question q = new Question(0, TOPICS[Integer.parseInt(s[0])], s[1],
-                            new String[] { s[2], s[3], s[4], s[5] }, Integer.parseInt(s[6]));
-                    fill(ps, q);
-                    ps.setString(8, SOURCE);
-                    ps.setString(9, hash(q));
-                    added += ps.executeUpdate();
-                }
-            }
-            return added;
         }
+        return added;
     }
 
     // ---------------------------------------------------------------- export for Unity
@@ -185,16 +227,14 @@ public final class IslandQuestions {
      * @return how many questions were written
      */
     public static int export(Path file) throws SQLException, IOException {
+        ensureTables();
         JsonArray questions = new JsonArray();
-        String sql = "SELECT id, category, question, option_a, option_b, option_c, option_d, correct_index " +
-                "FROM trivia_questions WHERE source = ? ORDER BY id";
-        try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, SOURCE);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    Question q = read(rs);
-                    if (indexOf(q.topic()) < 0) continue;
+        try (Connection conn = DatabaseManager.getConnection()) {
+            for (int t = 0; t < TOPICS.length; t++) {
+                String sql = "SELECT id, question, option_a, option_b, option_c, option_d, correct_index FROM " + table(t) + " ORDER BY id";
+                try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+                  while (rs.next()) {
+                    Question q = read(rs, TOPICS[t]);
                     JsonObject o = new JsonObject();
                     o.addProperty("question", q.question());
                     JsonArray options = new JsonArray();
@@ -203,6 +243,7 @@ public final class IslandQuestions {
                     o.addProperty("correctIndex", q.correct());
                     o.addProperty("category", q.topic());
                     questions.add(o);
+                  }
                 }
             }
         }
